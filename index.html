@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disaster Response Management System</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar" id="navbar" style="display: none;">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <i class="fas fa-shield-alt"></i>
+                <span>DRMS</span>
+            </div>
+            <div class="nav-menu">
+                <a href="#" data-page="requests" class="nav-link active">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a href="#" data-page="view" class="nav-link">
+                    <i class="fas fa-boxes"></i> Inventory
+                </a>
+                <a href="#" data-page="submit_request" class="nav-link">
+                    <i class="fas fa-exclamation-triangle"></i> Submit Request
+                </a>
+                <a href="#" data-page="add" class="nav-link admin-only">
+                    <i class="fas fa-plus-circle"></i> Add Resource
+                </a>
+            </div>
+            <div class="nav-user">
+                <span class="user-role" id="userRole">Admin</span>
+                <button class="btn btn--sm btn--outline" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i> Switch Role
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    <div class="flash-messages" id="flashMessages"></div>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+
+        <!-- Login Page -->
+        <div class="page active" id="loginPage">
+            <div class="login-container">
+                <div class="login-card">
+                    <div class="login-header">
+                        <i class="fas fa-shield-alt login-icon"></i>
+                        <h1>Disaster Response Management System</h1>
+                        <p>Emergency Response & Resource Coordination Platform</p>
+                    </div>
+                    <div class="login-form">
+                        <h2>Select Your Role</h2>
+                        <div class="role-buttons">
+                            <button class="role-btn" data-role="admin">
+                                <i class="fas fa-user-shield"></i>
+                                <span>Administrator</span>
+                                <small>Full system access & management</small>
+                            </button>
+                            <button class="role-btn" data-role="user">
+                                <i class="fas fa-user"></i>
+                                <span>User</span>
+                                <small>View requests & inventory</small>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Requests Board Page -->
+        <div class="page" id="requestsPage">
+            <div class="container">
+                <div class="page-header">
+                    <h1><i class="fas fa-tachometer-alt"></i> Operational Command Center</h1>
+                    <div class="dashboard-stats">
+                        <div class="stat-card">
+                            <div class="stat-number" id="totalRequests">0</div>
+                            <div class="stat-label">Total Requests</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="activeRequests">0</div>
+                            <div class="stat-label">Active Requests</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="availableResources">0</div>
+                            <div class="stat-label">Available Resources</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="requests-layout">
+                    <!-- Map Section -->
+                    <div class="map-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-map-marked-alt"></i> Real-Time Situation Map</h3>
+                            <button class="btn btn--primary" onclick="optimizeRoutes()">
+                                <i class="fas fa-route"></i> Optimize Routes
+                            </button>
+                        </div>
+                        <div class="map-container" style="position: relative; height: 400px;">
+                            <div id="emergencyMap"></div>
+                        </div>
+                    </div>
+
+                    <!-- Requests Table -->
+                    <div class="table-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-list"></i> Emergency Requests - AI Priority Ranked</h3>
+                            <div class="filter-controls">
+                                <select class="form-control" id="statusFilter" onchange="filterRequests()">
+                                    <option value="all">All Status</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="allocated">Allocated</option>
+                                    <option value="resolved">Resolved</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Priority Score</th>
+                                        <th>Request ID</th>
+                                        <th>Location</th>
+                                        <th>Affected</th>
+                                        <th>Severity</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="requestsTableBody">
+                                    <!-- Dynamic content -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View Inventory Page -->
+        <div class="page" id="viewPage">
+            <div class="container">
+                <div class="page-header">
+                    <h1><i class="fas fa-boxes"></i> Resource Inventory Management</h1>
+                </div>
+                
+                <div class="inventory-controls">
+                    <div class="search-filters">
+                        <input type="text" class="form-control" id="resourceSearch" 
+                               placeholder="Search by resource name or location..." 
+                               oninput="searchResources()">
+                        <select class="form-control" id="categoryFilter" onchange="filterResources()">
+                            <option value="All">All Categories</option>
+                            <option value="Medical">Medical</option>
+                            <option value="Food/Water">Food/Water</option>
+                            <option value="Equipment">Equipment</option>
+                            <option value="Personnel">Personnel</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Resource Name</th>
+                                <th>Quantity</th>
+                                <th>Location</th>
+                                <th>Category</th>
+                                <th>Status</th>
+                                <th class="admin-only">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resourcesTableBody">
+                            <!-- Dynamic content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Request Page -->
+        <div class="page" id="submitRequestPage">
+            <div class="container">
+                <div class="form-container">
+                    <div class="form-header">
+                        <h1><i class="fas fa-exclamation-triangle"></i> Submit Emergency Request</h1>
+                        <p>Report an emergency situation that requires immediate attention</p>
+                    </div>
+                    
+                    <form class="emergency-form" id="emergencyForm">
+                        <div class="form-group">
+                            <label class="form-label">Emergency Location*</label>
+                            <input type="text" class="form-control" id="requestLocation" 
+                                   placeholder="Enter specific location or address" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Situation Description*</label>
+                            <textarea class="form-control" id="requestDescription" rows="4" 
+                                      placeholder="Describe the emergency situation in detail..." required></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Individuals Affected*</label>
+                                <input type="number" class="form-control" id="requestAffected" 
+                                       min="1" placeholder="Number of people affected" 
+                                       oninput="calculatePriority()" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Severity Level*</label>
+                                <select class="form-control" id="requestSeverity" 
+                                        onchange="calculatePriority()" required>
+                                    <option value="">Select severity level</option>
+                                    <option value="1">1 - Minor (No immediate danger)</option>
+                                    <option value="2">2 - Low (Limited impact)</option>
+                                    <option value="3">3 - Moderate (Significant concern)</option>
+                                    <option value="4">4 - High (Serious situation)</option>
+                                    <option value="5">5 - Critical (Life threatening)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="priority-display" id="priorityDisplay" style="display: none;">
+                            <div class="priority-score">
+                                <strong>Calculated Priority Score: <span id="priorityScore">0</span></strong>
+                                <small>Higher scores receive faster response</small>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn--primary btn--lg">
+                            <i class="fas fa-paper-plane"></i> Submit Emergency Request
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Resource Page -->
+        <div class="page admin-only" id="addPage">
+            <div class="container">
+                <div class="form-container">
+                    <div class="form-header">
+                        <h1><i class="fas fa-plus-circle"></i> Add New Resource</h1>
+                        <p>Add resources to the emergency response inventory</p>
+                    </div>
+                    
+                    <form class="resource-form" id="resourceForm">
+                        <div class="form-group">
+                            <label class="form-label">Resource Name*</label>
+                            <input type="text" class="form-control" id="resourceName" 
+                                   placeholder="Enter resource name" required>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Quantity*</label>
+                                <input type="number" class="form-control" id="resourceQuantity" 
+                                       min="1" placeholder="Available quantity" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Category*</label>
+                                <select class="form-control" id="resourceCategory" required>
+                                    <option value="">Select category</option>
+                                    <option value="Medical">Medical</option>
+                                    <option value="Food/Water">Food/Water</option>
+                                    <option value="Equipment">Equipment</option>
+                                    <option value="Personnel">Personnel</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Location*</label>
+                            <input type="text" class="form-control" id="resourceLocation" 
+                                   placeholder="Resource location or base" required>
+                        </div>
+
+                        <button type="submit" class="btn btn--primary btn--lg">
+                            <i class="fas fa-plus"></i> Add Resource to Inventory
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
